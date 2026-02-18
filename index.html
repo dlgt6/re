@@ -52,142 +52,196 @@
     
     <script>
         const materials = {
-            R: { positive: '铂铑 (13%)', negative: '铂', color: '#FF0000' },
-            S: { positive: '铂铑 (10%)', negative: '铂', color: '#FF0000' },
-            B: { positive: '铂铑 (30%)', negative: '铂铑 (6%)', color: '#A9A9A9' },
-            J: { positive: '铁', negative: '铜镍', color: '#FFFFFF' },
-            T: { positive: '铜', negative: '铜镍', color: '#0000FF' },
-            E: { positive: '镍铬', negative: '铜镍', color: '#800080' },
-            K: { positive: '镍铬', negative: '镍铝', color: '#FFFF00' }
+            R: { positive: '铂铑 (13%)', negative: '铂' },
+            S: { positive: '铂铑 (10%)', negative: '铂' },
+            B: { positive: '铂铑 (30%)', negative: '铂铑 (6%)' },
+            J: { positive: '铁', negative: '康铜' },
+            T: { positive: '铜', negative: '康铜' },
+            E: { positive: '镍铬', negative: '康铜' },
+            K: { positive: '镍铬', negative: '镍铝' }
         };
 
         const coefficients = {
             J: {
-                direct: [
-                    { range: [-210, 0], coeffs: [0, 50.381768815, 0.3047583693, -0.0008568106572, 0.0000013228195295, -0.0000000017052958337, 0.0000000000020948090697, -0.0000000000000012538395336, 0.00000000000000000015631725697] },
-                    { range: [0, 760], coeffs: [0, 50.381768815, 0.3047583693, -0.0008568106572, 0.0000013228195295, -0.0000000017052958337, 0.0000000000020948090697, -0.0000000000000012538395336, 0.00000000000000000015631725697] }, // Similar to low range
-                    { range: [760, 1200], coeffs: [-3113.58187, 3.00543684, -0.0000099477323, 0.00000000017027663, -0.00000000000000143033468, 0.00000000000000000000473886084] }
+                direct: [ // μV
+                    { range: [-210, 760], coeffs: [0.0, 50.3817688154, 3.0475836930e-1, -8.5681065723e-4, 1.3228195295e-6, -1.7052958337e-9, 2.0948090697e-12, -1.2538395336e-15, 1.5631549822e-19] },
+                    { range: [760, 1200], coeffs: [-2016.325908, 38.1045566, -0.04559686, 1.0996880928e-4, -1.0013809125e-7, 4.6282346685e-11, -1.05275546e-14, 9.804036031e-19] }
                 ],
-                inverse: [
-                    { range: [-8.095, 0], coeffs: [0, 19.528268, -1.2286185, -1.0752178, -0.59086933, -0.17256713, -0.028131513, -0.002396337, -0.000083823321] },
-                    { range: [0, 42.919], coeffs: [0, 19.78425, -0.2001204, 0.01036969, -0.0002549687, 0.000003585153, -0.00000005344285, 0.000000000509989] },
-                    { range: [42.919, 69.553], coeffs: [295.556213, 0.206182434, -0.000001636805, 0.00000000000992715, -0.00000000000000003358] }
+                inverse: [ // mV to °C
+                    { range: [-8.095, 0], coeffs: [0.0, 1.9528268e1, -1.2286185, -1.0752178, -5.9086933e-1, -1.7256713e-1, -2.8131513e-2, -2.3963370e-3, -8.3823321e-5] },
+                    { range: [0, 42.919], coeffs: [0.0, 1.978425e1, -2.001204e-1, 1.036969e-2, -2.549687e-5, 3.585153e-6, -5.344285e-8, 5.099890e-10] },
+                    { range: [42.919, 69.553], coeffs: [-3.11358187e3, 3.00543684e2, -9.94773230, 1.70276630e-1, -1.43033468e-3, 4.73886084e-6] }
                 ],
                 tempRange: [-210, 1200],
                 emfRange: [-8.095, 69.553],
                 tolerances: {
-                    class1: (t) => t >= -40 && t <= 375 ? 1.5 : 0.004 * Math.abs(t),
-                    class2: (t) => t >= -40 && t <= 333 ? 2.5 : 0.0075 * Math.abs(t),
-                    class3: (t) => t >= -200 && t <= 40 ? 2.5 : 0.015 * Math.abs(t)
+                    class1: (t) => {
+                        if (t < -40 || t > 750) return 'N/A';
+                        return t <= 375 ? 1.5 : 0.004 * Math.abs(t);
+                    },
+                    class2: (t) => {
+                        if (t < -40 || t > 750) return 'N/A';
+                        return t <= 333 ? 2.5 : 0.0075 * Math.abs(t);
+                    },
+                    class3: (t) => {
+                        if (t < -200 || t > 40) return 'N/A';
+                        return 2.5;
+                    }
                 }
             },
             K: {
                 direct: [
-                    { range: [-270, 0], coeffs: [0, 39.450128025, 0.023622373598, -0.00032858906784, -0.0000049904828777, -0.000000067509059173, -0.00000000057410327428, -0.0000000000031088872894, -0.000000000000010451609365, -0.000000000000000019889266878, -0.00000000000000000016322697486] },
-                    { range: [0, 1372], coeffs: [-17.600413686, 38.921204975, 0.018558770032, -0.000099457592874, 0.00000031840945719, -0.00000000056072844889, 0.00000000000056075059059, -0.00000000000000032020720003, 0.000000000000000000097151147152, -0.0000000000000000000012104721275], exp: { a0: 118.5976, a1: -0.0001183432, t0: 126.9686 } }
+                    { range: [-200, 0], coeffs: [0.0, 3.9450128025e1, 2.3622373598e-2, -3.2858906784e-4, -4.9904828777e-6, -6.7509059173e-8, -5.7410327428e-10, -3.1088872894e-12, -1.0451609365e-14, -1.9889266878e-17, -1.6322697486e-20] },
+                    { range: [0, 500], coeffs: [-1.7600413686e1, 3.8921204975e1, 1.8558770032e-2, -9.9457592874e-5, 3.1840945719e-7, -5.6072844889e-10, 5.6075059059e-13, -3.2020720003e-16, 9.7151147152e-20, -1.2104721275e-23, 1.185976e2 * Math.exp(-1.183432e-4 * (t - 126.9686)**2)] },
+                    { range: [500, 1372], coeffs: [-1.318058e2, 4.830222e1, -1.646031, 5.464731e-2, -9.650715e-4, 8.802193e-6, -3.110810e-8] }
                 ],
                 inverse: [
-                    { range: [-5.891, 0], coeffs: [0, 25.08355, -1.2762878, -1.0833638, -0.8977354, -0.37342377, -0.086632643, -0.0010450598, -0.0000051920577] },
-                    { range: [0, 20.644], coeffs: [0, 25.173462, -0.2001204, 0.01036969, -0.0002549687, 0.000003585153, -0.00000005344285, 0.000000000509989, -0.00000000000392128] },
-                    { range: [20.644, 54.886], coeffs: [-1313.805611, 48.302223, -1.646031, 0.054263369, -0.001439149, 0.0000002522023, -0.0000000275862, 0.000000001703021, -0.0000000000456463] }
+                    { range: [-5.891, 0], coeffs: [0.0, 2.5173462e1, -1.1662878, -1.0833638, -8.9773540e-1, -3.7342377e-1, -8.6632643e-2, -1.0450598e-5, -5.1920577e-6] },
+                    { range: [0, 20.644], coeffs: [0.0, 2.508355e1, 7.860106e-2, -2.503131e-1, 8.315270e-2, -1.228034e-2, 9.804036e-4, -4.413030e-6, 1.057734e-8, -1.052755e-11] },
+                    { range: [20.644, 54.886], coeffs: [-1.318058e2, 4.830222e1, -1.646031, 5.464731e-2, -9.650715e-4, 8.802193e-6, -3.110810e-8] }
                 ],
                 tempRange: [-270, 1372],
                 emfRange: [-6.458, 54.886],
                 tolerances: {
-                    class1: (t) => t >= -40 && t <= 375 ? 1.5 : 0.004 * Math.abs(t),
-                    class2: (t) => t >= -40 && t <= 333 ? 2.5 : 0.0075 * Math.abs(t),
-                    class3: (t) => t >= -200 && t <= 40 ? 2.5 : 0.015 * Math.abs(t)
+                    class1: (t) => {
+                        if (t < -40 || t > 1000) return 'N/A';
+                        return t <= 375 ? 1.5 : 0.004 * Math.abs(t);
+                    },
+                    class2: (t) => {
+                        if (t < -40 || t > 1200) return 'N/A';
+                        return t <= 333 ? 2.5 : 0.0075 * Math.abs(t);
+                    },
+                    class3: (t) => {
+                        if (t < -200 || t > 40) return 'N/A';
+                        return 2.5;
+                    }
                 }
             },
             E: {
                 direct: [
-                    { range: [-270, 0], coeffs: [0, 58.665508708, 0.045410977124, -0.00077998048686, -0.000025800160843, -0.00000059452583057, -0.0000000093214058667, -0.00000000010287605534, -0.000000000000080370123621, -0.0000000000000043979497391, -0.00000000000000016414776355, -0.0000000000000000039673619516, -0.000000000000000000055827328721, -0.0000000000000000000034657842013] },
-                    { range: [0, 1000], coeffs: [0, 58.662047564, 0.0450453513409, -0.00025936004895, 0.000000067562099, -0.00000000001055703248, 0.000000000000001052755224, -0.00000000000000000007272886979, 0.0000000000000000000000033600167, -0.0000000000000000000000000968599, 0.00000000000000000000000000000120957] }
+                    { range: [-200, 0], coeffs: [0.0, 5.8665508708e1, 4.5410977124e-2, -7.7998048686e-4, -2.5800160843e-5, -5.9452583057e-7, -9.3214058667e-9, -1.0287605534e-10, -8.0370123621e-13, -4.3979497391e-15, -1.6414776355e-17, -3.9673619516e-20, -5.5827328721e-23, -3.4657842013e-26] },
+                    { range: [0, 1000], coeffs: [0.0, 5.8665508710e1, 4.5032275582e-2, 2.8908407212e-5, -3.3056896652e-7, 6.5024403270e-10, -6.4066656604e-13, 3.8438522598e-16, -1.2260341300e-19, 1.6053048166e-23, 1.185976e2 * Math.exp(-1.183432e-4 * (t - 126.9686)**2)] }
                 ],
                 inverse: [
-                    { range: [-9.835, 0], coeffs: [0, 17.00153067, -0.3185380988, 0.00438793512, -0.000144048298, -0.000002920780, 0.000000360529, -0.00000002059526, 0.000000000486818, -0.00000000000482775] },
-                    { range: [0, 76.373], coeffs: [0, 17.00153067, -0.3185380988, 0.00438793512, -0.000144048298, -0.000002920780, 0.000000360529, -0.00000002059526, 0.000000000486818, -0.00000000000482775] }
+                    { range: [-8.825, 0], coeffs: [0.0, 1.6977288e1, -4.3514970e-1, -1.5859697e-1, -9.2502871e-2, -2.6084314e-2, -4.1360199e-3, -3.4034030e-4, -1.1564890e-5] },
+                    { range: [0, 76.373], coeffs: [0.0, 1.7057035e1, -2.3301759e-1, 6.5435585e-3, -7.3562749e-5, -1.7896001e-6, 8.4036165e-8, -1.3735879e-9, 1.0629823e-11, -3.2447087e-14] }
                 ],
                 tempRange: [-270, 1000],
                 emfRange: [-9.835, 76.373],
                 tolerances: {
-                    class1: (t) => t >= -40 && t <= 375 ? 1.5 : 0.004 * Math.abs(t),
-                    class2: (t) => t >= -40 && t <= 333 ? 2.5 : 0.0075 * Math.abs(t),
-                    class3: (t) => t >= -200 && t <= 40 ? 2.5 : 0.015 * Math.abs(t)
+                    class1: (t) => {
+                        if (t < -40 || t > 800) return 'N/A';
+                        return t <= 375 ? 1.5 : 0.004 * Math.abs(t);
+                    },
+                    class2: (t) => {
+                        if (t < -40 || t > 900) return 'N/A';
+                        return t <= 333 ? 2.5 : 0.0075 * Math.abs(t);
+                    },
+                    class3: (t) => {
+                        if (t < -200 || t > 40) return 'N/A';
+                        return 2.5;
+                    }
                 }
             },
             T: {
                 direct: [
-                    { range: [-270, 0], coeffs: [0, 38.749194, 0.04181295, -0.000645097, -0.00000201192, 0.000000125993, -0.000000003899256, 0.000000000067463, -0.000000000000639248, 0.00000000000000003369, -0.000000000000000000965275] },
-                    { range: [0, 400], coeffs: [0, 38.749194, 0.04181295, -0.000645097, -0.00000201192, 0.000000125993, -0.000000003899256, 0.000000000067463, -0.000000000000639248, 0.00000000000000003369, -0.000000000000000000965275] }
+                    { range: [-200, 0], coeffs: [0.0, 3.8748106364e1, 4.4194434347e-2, -6.7549233144e-4, -2.0032973554e-5, 8.057047e-7, -2.8511853e-8, 5.607204e-10, -5.2186848e-12] },
+                    { range: [0, 400], coeffs: [0.0, 3.8748106364e1, 3.3292227880e-2, 2.0618243404e-4, -2.1882256846e-6, 1.0996880928e-8, -3.0815758772e-11, 4.5479135290e-14, -2.7754911967e-17] }
                 ],
                 inverse: [
-                    { range: [-5.603, 0], coeffs: [0, 25.9078, 0.790106, -2.242713, 5.862046, -9.829252, 10.257031, -6.630913, 2.435179, -0.3916978] },
-                    { range: [0, 20.872], coeffs: [0, 25.9078, 0.790106, -2.242713, 5.862046, -9.829252, 10.257031, -6.630913, 2.435179, -0.3916978] }
+                    { range: [-5.603, 0], coeffs: [0.0, 2.5949192e1, -1.4420329e-1, 5.5151538, -1.5905623e1, 2.823159e1, -2.8763005e1, 1.994710, -5.638203e-1] },
+                    { range: [0, 20.872], coeffs: [0.0, 2.592800e1, -7.602961e-1, 4.637791e-2, -2.608336e-3, 6.048144e-5, -5.184475e-7] }
                 ],
                 tempRange: [-270, 400],
                 emfRange: [-5.603, 20.872],
                 tolerances: {
-                    class1: (t) => t >= -40 && t <= 125 ? 0.5 : 0.004 * Math.abs(t),
-                    class2: (t) => t >= -40 && t <= 133 ? 1 : 0.0075 * Math.abs(t),
-                    class3: (t) => t >= -200 && t <= 40 ? 1 : 0.015 * Math.abs(t)
+                    class1: (t) => {
+                        if (t < -40 || t > 350) return 'N/A';
+                        return t <= 125 ? 0.5 : 0.004 * Math.abs(t);
+                    },
+                    class2: (t) => {
+                        if (t < -40 || t > 350) return 'N/A';
+                        return t <= 133 ? 1 : 0.0075 * Math.abs(t);
+                    },
+                    class3: (t) => {
+                        if (t < -200 || t > 40) return 'N/A';
+                        return 1;
+                    }
                 }
             },
             R: {
                 direct: [
-                    { range: [-50, 1064.18], coeffs: [0, 5.28961729765, 0.0139166589782, -0.0000238855693017, 0.0000000356916001063, -0.0000000000462347666298, 0.0000000000000500777441034, -0.0000000000000000373105886191, 0.0000000000000000000157716482367, -0.00000000000000000000000281038625251] },
-                    { range: [1064.18, 1664.5], coeffs: [2.95157925316, -2.52061251332, 0.0099477323, -0.00000017027663, 0.00000000000143033468, -0.00000000000000000473886084] },
-                    { range: [1664.5, 1768.1], coeffs: [ -148.9159, 1.1410196, -0.0029927827, 0.000004836488, -0.000000004001204, 0.0000000000017467099, -0.0000000000000003155417] }
+                    { range: [-50, 1064.18], coeffs: [0.0, 5.28961729765, 1.39166589782e-2, -2.38855693017e-5, 3.56916001063e-8, -4.62347666298e-11, 5.00777441034e-14, -3.73105886191e-17, 1.57716482367e-20, -2.81038625251e-24] },
+                    { range: [1064.18, 1664.5], coeffs: [2.95157925316e3, -2.52061251332e3, 9.9477323, -1.7027663e-1, 1.43033468e-3, -4.73886084e-6] },
+                    { range: [1664.5, 1768.1], coeffs: [1.185976e2, -1.183432e-4 * (t - 126.9686)**2] } // exponential term for high
                 ],
                 inverse: [
-                    { range: [-0.226, 1.923], coeffs: [0, 169.5018, -28.51447, 41.99487, -36.43096, 29.0544, -15.23834, 4.719416, -0.6182591] },
-                    { range: [1.923, 11.361], coeffs: [0, 185.30818, -8.0060413, 1.0997881, -0.037481159, -0.00025284711, 0.0000026038692, -0.000000048412854] },
-                    { range: [11.361, 19.739], coeffs: [-5179.288, 336.6824, -6.510153, 0.078280467, -0.00053849439, 0.0000018742864, -0.000000002082921] },
-                    { range: [19.739, 21.103], coeffs: [19007.802, -194.03567, 6.6078836, -0.075291522, 0.00000036304898, -0.00000000008754904] }
+                    { range: [-0.226, 1.923], coeffs: [0.0, 1.889138e2, -9.3835290e1, 1.3068619e2, -2.2703580e2, 3.5145659e2, -3.8953900e2, 2.8239471e2, -1.2607281e2, 3.1353611e1, -3.3187769] },
+                    { range: [1.923, 11.361], coeffs: [0.0, 1.334584505e2, -1.472644573e2, 1.844024844e2, -1.513637513e2, 8.08668845e1, -2.503004725e1, 4.65256e-1, -3.244708e-3] },
+                    { range: [11.361, 19.739], coeffs: [0.0, 1.889138e2, -9.3835290e1, 1.3068619e2, -2.2703580e2, 3.5145659e2, -3.8953900e2, 2.8239471e2, -1.2607281e2, 3.1353611e1, -3.3187769] }, // adjust
+                    { range: [19.739, 21.103], coeffs: [1.90027820e4, -1.94035367e2, 6.6078836, -7.5291522e-2, 3.6304898e-4, -8.754904e-8] }
                 ],
                 tempRange: [-50, 1768],
                 emfRange: [-0.226, 21.103],
                 tolerances: {
-                    class1: (t) => t >= 0 && t <= 1100 ? 1 : 1 + 0.003 * (t - 1100),
-                    class2: (t) => t >= 0 && t <= 600 ? 1.5 : 0.0025 * t,
+                    class1: (t) => {
+                        if (t < 0 || t > 1600) return 'N/A';
+                        return t <= 1100 ? 1 : 1 + 0.003 * (t - 1100);
+                    },
+                    class2: (t) => {
+                        if (t < 0 || t > 1600) return 'N/A';
+                        return t <= 600 ? 1.5 : 0.0025 * t;
+                    },
                     class3: null
                 }
             },
             S: {
                 direct: [
-                    { range: [-50, 1064.18], coeffs: [0, 5.40313308631, 0.0132584308822, -0.0000225231596067, 0.0000000301081060809, -0.000000000037383768415, 0.000000000000033325047853, -0.000000000000000018994951336, 0.0000000000000000000060863245607, -0.000000000000000000000000846609935] },
-                    { range: [1064.18, 1664.5], coeffs: [1.540963, -1.501791, 0.00511955, -0.0000071632216, 0.000000005333875, -0.000000000002045598, 0.00000000000000000039539048] },
-                    { range: [1664.5, 1768.1], coeffs: [ -245.135, 0.8004208, -0.0006361282, 0.0000002630528, -0.00000000005801852, 0.000000000006713672, -0.00000000000000032562052] }
+                    { range: [-50, 1064.18], coeffs: [0.0, 5.4031330863, 1.3259430485e-2, -2.2523207475e-5, 3.0108106180e-8, -3.7383768415e-11, 3.33253258485e-14, -1.8994951336e-17, 6.0863245607e-21, -8.466099353e-25] },
+                    { range: [1064.18, 1664.5], coeffs: [1.5409630494e3, -1.50179125117e3, 5.1196552, -7.1632216e-3, 5.333875e-6, -2.045598e-9, 3.95385252e-13] },
+                    { range: [1664.5, 1768.1], coeffs: [1.185976e2, -1.183432e-4 * (t - 126.9686)**2] }
                 ],
                 inverse: [
-                    { range: [-0.235, 1.874], coeffs: [0, 171.0459, -38.51473, 69.55381, -88.1414, 87.75247, -57.93139, 23.31864, -5.141797, 0.4411532] },
-                    { range: [1.874, 11.95], coeffs: [0, 190.3727, -7.3562749, 0.9178369, -0.02948, -0.0003173293, 0.0000026596514, -0.00000005333395] },
-                    { range: [11.95, 18.503], coeffs: [-3369.445, 268.8141, -6.917401, 0.09195204, -0.000629261, 0.000002386049, -0.000000003821953] },
-                    { range: [18.503, 18.693], coeffs: [33629.83, -277.2435, 7.25646, -0.07818431, 0.0000003200975, -0.0000000000671204] }
+                    { range: [-0.235, 1.874], coeffs: [0.0, 1.84949460e2, -8.00504062e1, 1.02237430e2, -1.52248592e2, 1.88821343e2, -1.59085941e2, 8.23027880e1, -2.34181944e1, 2.79786260] },
+                    { range: [1.874, 11.95], coeffs: [0.0, 1.291507177e2, -1.466298863e2, 1.534713402e2, -3.145945973e1, -4.163257839e1, 3.187963771e1, -1.291637500e1, 2.183475087e-1, -1.112173296e-3] },
+                    { range: [11.95, 18.503], coeffs: [0.0, 1.84949460e2, -8.00504062e1, 1.02237430e2, -1.52248592e2, 1.88821343e2, -1.59085941e2, 8.23027880e1, -2.34181944e1, 2.79786260] }, // adjust
+                    { range: [18.503, 18.693], coeffs: [3.36298318e4, -2.7724356e2, 7.25646, -7.818431e-2, 3.2009785e-4, -6.71204e-8] }
                 ],
                 tempRange: [-50, 1768],
                 emfRange: [-0.235, 18.693],
                 tolerances: {
-                    class1: (t) => t >= 0 && t <= 1100 ? 1 : 1 + 0.003 * (t - 1100),
-                    class2: (t) => t >= 0 && t <= 600 ? 1.5 : 0.0025 * t,
+                    class1: (t) => {
+                        if (t < 0 || t > 1600) return 'N/A';
+                        return t <= 1100 ? 1 : 1 + 0.003 * (t - 1100);
+                    },
+                    class2: (t) => {
+                        if (t < 0 || t > 1600) return 'N/A';
+                        return t <= 600 ? 1.5 : 0.0025 * t;
+                    },
                     class3: null
                 }
             },
             B: {
-                direct: [
-                    { range: [0, 630.615], coeffs: [0, -0.24650818346, 0.0059040421171, -0.0000013257931636, 0.0000000015668291901, -0.000000000001694452924, 0.00000000000000062990347094] },
-                    { range: [630.615, 1820], coeffs: [-3893.8168621, 28.57174747, -0.084885104785, 0.00015785280164, -0.00000016835344864, 0.00000000011109794013, -0.000000000000044515431033, 0.0000000000000000098975640821, -0.00000000000000000000093791330289] }
+                direct: [ // μV
+                    { range: [0, 630.615], coeffs: [0.0, -2.4650818346e-1, 5.9040421171e-3, -1.3257931636e-6, 1.5668291901e-9, -1.6944529240e-12, 6.2990347094e-16] },
+                    { range: [630.615, 1820], coeffs: [0.0, -3.8938168621e3, 2.8571747470e1, -8.4885104785e-2, 1.5785280164e-4, -1.6835344864e-7, 1.1109794013e-10, -4.4515431033e-14, 9.8975640821e-18, -9.3791330289e-22] }
                 ],
-                inverse: [
-                    { range: [0.291, 2.431], coeffs: [9.8423321, 0.6997150, -0.00084765304, 0.0010052644, -0.00000083345952, 0.00000045508542, -0.00000015523037, 0.00000002988675, -0.000000002474286] },
-                    { range: [2.431, 13.82], coeffs: [-213.15071, 0.28510504, -0.000052742887, 0.0000099160804, -0.0000000012965303, 0.0000000001119587, -0.0000000000060625199, 0.00000000000018661696, -0.0000000000000024878585] }
+                inverse: [ // mV to °C
+                    { range: [0.291, 2.431], coeffs: [9.8423321e1, 6.997150e2, -8.4765304e2, 1.0052644e3, -8.3345952e2, 4.5508542e2, -1.5523037e2, 2.988675e1, -2.4742860] },
+                    { range: [2.431, 13.820], coeffs: [2.1315071e2, 2.8510504e2, -5.2742887e1, 9.9160804, -1.2965303, 1.1195870e-1, -6.0625199e-3, 1.8661696e-4, -2.4878585e-6] }
                 ],
                 tempRange: [0, 1820],
-                emfRange: [0, 13.82],
+                emfRange: [0, 13.820],
                 tolerances: {
-                    class1: null,
-                    class2: (t) => t >= 600 && t <= 1700 ? 0.0025 * t : null,
-                    class3: (t) => t >= 600 && t <= 800 ? 4 : 0.005 * t
+                    class1: () => 'N/A',
+                    class2: (t) => {
+                        if (t < 600 || t > 1700) return 'N/A';
+                        return 0.0025 * t;
+                    },
+                    class3: (t) => {
+                        if (t < 600 || t > 1820) return 'N/A';
+                        return t <= 800 ? 4 : 0.005 * t;
+                    }
                 }
             }
         };
@@ -196,46 +250,24 @@
             return document.querySelector('input[name="type"]:checked').value;
         }
 
-        function calculatePolynomial(coeffs, x, exp = null) {
-            let result = coeffs.reduce((acc, c, i) => acc + c * Math.pow(x, i), 0);
-            if (exp) {
-                result += exp.a0 * Math.exp(exp.a1 * Math.pow(x - exp.t0, 2));
-            }
-            return result;
+        function calculatePolynomial(coeffs, x) {
+            return coeffs.reduce((acc, c, i) => acc + c * Math.pow(x, i), 0);
         }
 
-        function findRange(ranges, value) {
+        function findRange(ranges, value, isEmf = false) {
             for (let r of ranges) {
-                if (value >= r.range[0] && value <= r.range[r.range.length - 1]) {
+                const rRange = isEmf ? r.range.map(v => v * 1000) : r.range; // if inverse range in mV, convert to μV
+                if (value >= rRange[0] && value <= rRange[rRange.length - 1]) {
                     return r;
                 }
             }
             return null;
         }
 
-        function invertEmf(data, emfTotal, minT, maxT) {
-            // Binary search for temperature given emf
-            let low = minT;
-            let high = maxT;
-            for (let iter = 0; iter < 100; iter++) {
-                const mid = (low + high) / 2;
-                const range = findRange(data.direct, mid);
-                if (!range) return null;
-                const emfCalc = calculatePolynomial(range.coeffs, mid, range.exp);
-                if (emfCalc < emfTotal) {
-                    low = mid;
-                } else {
-                    high = mid;
-                }
-                if (Math.abs(high - low) < 0.001) break;
-            }
-            return (low + high) / 2;
-        }
-
         function calculateEmf() {
             const type = getType();
             const data = coefficients[type];
-            const tHot = parseFloat(document.getElementById('inputTemp').value);
+            let tHot = parseFloat(document.getElementById('inputTemp').value);
             const tCold = parseFloat(document.getElementById('coldTemp').value);
             if (isNaN(tHot) || isNaN(tCold) || tHot < data.tempRange[0] || tHot > data.tempRange[1] || tCold < 0 || tCold > 60) {
                 alert('输入值无效或超出范围');
@@ -244,75 +276,91 @@
 
             const rangeHot = findRange(data.direct, tHot);
             const rangeCold = findRange(data.direct, tCold);
-            const emfHot = calculatePolynomial(rangeHot.coeffs, tHot, rangeHot.exp);
-            const emfCold = calculatePolynomial(rangeCold.coeffs, tCold, rangeCold.exp);
-            const emf = (emfHot - emfCold) / 1000; // μV to mV
+            if (!rangeHot || !rangeCold) {
+                alert('温度超出多项式范围');
+                return;
+            }
 
-            const tol1 = data.tolerances.class1 ? data.tolerances.class1(tHot).toFixed(2) : 'N/A';
-            const tol2 = data.tolerances.class2 ? data.tolerances.class2(tHot).toFixed(2) : 'N/A';
-            const tol3 = data.tolerances.class3 ? data.tolerances.class3(tHot).toFixed(2) : 'N/A';
+            let emfHot = calculatePolynomial(rangeHot.coeffs, tHot);
+            let emfCold = calculatePolynomial(rangeCold.coeffs, tCold);
+            let emf = (emfHot - emfCold) / 1000; // to mV
+
+            const tol1 = data.tolerances.class1(tHot);
+            const tol2 = data.tolerances.class2(tHot);
+            const tol3 = data.tolerances.class3 ? data.tolerances.class3(tHot) : 'N/A';
 
             const mat = materials[type];
 
             document.getElementById('result').innerHTML = `
                 <h3>计算结果:</h3>
                 <p>电偶类型: ${type}型</p>
-                <p class="material">正极: ${mat.positive} / 负极: ${mat.negative}</p>
+                <p class="material">电偶来历: 正极 (${mat.positive}) / 负极 (${mat.negative})</p>
                 <p>电动势: ${emf.toFixed(3)}mV</p>
-                <p>1级公差: ±${tol1}°C</p>
-                <p>2级公差: ±${tol2}°C</p>
-                <p>3级公差: ±${tol3}°C</p>
+                <p>1级公差: ±${tol1 !== 'N/A' ? tol1.toFixed(1) + '°C' : '-°C'}</p>
+                <p>2级公差: ±${tol2 !== 'N/A' ? tol2.toFixed(1) + '°C' : '-°C'}</p>
+                <p>3级公差: ±${tol3 !== 'N/A' ? tol3.toFixed(1) + '°C' : '-°C'}</p>
                 <p>温度: ${tHot}°C</p>
-                <p>1级公差: ±${tol1}°C</p>
-                <p>2级公差: ±${tol2}°C</p>
-                <p>3级公差: ±${tol3}°C</p>
+                <p>1级公差: ±${tol1 !== 'N/A' ? tol1.toFixed(1) + '°C' : '-°C'}</p>
+                <p>2级公差: ±${tol2 !== 'N/A' ? tol2.toFixed(1) + '°C' : '-°C'}</p>
+                <p>3级公差: ±${tol3 !== 'N/A' ? tol3.toFixed(1) + '°C' : '-°C'}</p>
             `;
         }
 
         function calculateTemp() {
             const type = getType();
             const data = coefficients[type];
-            const emfMeasured = parseFloat(document.getElementById('inputEmf').value) * 1000; // mV to μV
+            let emfMeasured = parseFloat(document.getElementById('inputEmf').value) * 1000; // mV to μV
             const tCold = parseFloat(document.getElementById('coldTemp').value);
-            if (isNaN(emfMeasured) || isNaN(tCold) || emfMeasured < data.emfRange[0] * 1000 || emfMeasured > data.emfRange[1] * 1000 || tCold < 0 || tCold > 60) {
+            if (isNaN(emfMeasured) || isNaN(tCold) || emfMeasured / 1000 < data.emfRange[0] || emfMeasured / 1000 > data.emfRange[1] || tCold < 0 || tCold > 60) {
                 alert('输入值无效或超出范围');
                 return;
             }
 
             const rangeCold = findRange(data.direct, tCold);
-            const emfCold = calculatePolynomial(rangeCold.coeffs, tCold, rangeCold.exp);
+            if (!rangeCold) {
+                alert('冷端温度超出范围');
+                return;
+            }
+            const emfCold = calculatePolynomial(rangeCold.coeffs, tCold);
             const emfTotal = emfMeasured + emfCold;
 
+            const rangeInverse = findRange(data.inverse, emfTotal / 1000, true); // range in mV
             let tHot;
-            if (data.inverse) {
-                const range = findRange(data.inverse, emfTotal / 1000); // if inverse in mV, adjust
-                if (range) {
-                    tHot = calculatePolynomial(range.coeffs, emfTotal / 1000);
-                } else {
-                    tHot = invertEmf(data, emfTotal, data.tempRange[0], data.tempRange[1]);
-                }
+            if (rangeInverse) {
+                tHot = calculatePolynomial(rangeInverse.coeffs, emfTotal / 1000);
             } else {
-                tHot = invertEmf(data, emfTotal, data.tempRange[0], data.tempRange[1]);
+                // Fallback to binary search if no inverse
+                let low = data.tempRange[0];
+                let high = data.tempRange[1];
+                for (let i = 0; i < 100; i++) {
+                    const mid = (low + high) / 2;
+                    const midRange = findRange(data.direct, mid);
+                    const midEmf = calculatePolynomial(midRange.coeffs, mid);
+                    if (midEmf < emfTotal) low = mid;
+                    else high = mid;
+                    if (high - low < 0.001) break;
+                }
+                tHot = (low + high) / 2;
             }
 
-            const tol1 = data.tolerances.class1 ? data.tolerances.class1(tHot).toFixed(2) : 'N/A';
-            const tol2 = data.tolerances.class2 ? data.tolerances.class2(tHot).toFixed(2) : 'N/A';
-            const tol3 = data.tolerances.class3 ? data.tolerances.class3(tHot).toFixed(2) : 'N/A';
+            const tol1 = data.tolerances.class1(tHot);
+            const tol2 = data.tolerances.class2(tHot);
+            const tol3 = data.tolerances.class3 ? data.tolerances.class3(tHot) : 'N/A';
 
             const mat = materials[type];
 
             document.getElementById('result').innerHTML = `
                 <h3>计算结果:</h3>
                 <p>电偶类型: ${type}型</p>
-                <p class="material">正极: ${mat.positive} / 负极: ${mat.negative}</p>
+                <p class="material">电偶来历: 正极 (${mat.positive}) / 负极 (${mat.negative})</p>
                 <p>电动势: ${(emfMeasured / 1000).toFixed(3)}mV</p>
-                <p>1级公差: ±${tol1}°C</p>
-                <p>2级公差: ±${tol2}°C</p>
-                <p>3级公差: ±${tol3}°C</p>
+                <p>1级公差: ±${tol1 !== 'N/A' ? tol1.toFixed(1) + '°C' : '-°C'}</p>
+                <p>2级公差: ±${tol2 !== 'N/A' ? tol2.toFixed(1) + '°C' : '-°C'}</p>
+                <p>3级公差: ±${tol3 !== 'N/A' ? tol3.toFixed(1) + '°C' : '-°C'}</p>
                 <p>温度: ${tHot.toFixed(2)}°C</p>
-                <p>1级公差: ±${tol1}°C</p>
-                <p>2级公差: ±${tol2}°C</p>
-                <p>3级公差: ±${tol3}°C</p>
+                <p>1级公差: ±${tol1 !== 'N/A' ? tol1.toFixed(1) + '°C' : '-°C'}</p>
+                <p>2级公差: ±${tol2 !== 'N/A' ? tol2.toFixed(1) + '°C' : '-°C'}</p>
+                <p>3级公差: ±${tol3 !== 'N/A' ? tol3.toFixed(1) + '°C' : '-°C'}</p>
             `;
         }
     </script>
