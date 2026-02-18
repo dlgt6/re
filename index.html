@@ -1,1 +1,320 @@
-1
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>热电偶计算器 - 网页版</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f0f0f0; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .section { margin-bottom: 20px; }
+        label { margin-right: 10px; }
+        input[type="number"] { width: 100%; padding: 8px; margin: 5px 0; box-sizing: border-box; }
+        button { padding: 10px; background: #007bff; color: white; border: none; cursor: pointer; width: 100%; }
+        button:hover { background: #0056b3; }
+        #result { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px; }
+        .material { color: #007bff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>热电偶</h1>
+        
+        <div class="section">
+            <h2>类型</h2>
+            <label><input type="radio" name="type" value="R"> R型</label>
+            <label><input type="radio" name="type" value="S"> S型</label>
+            <label><input type="radio" name="type" value="B"> B型</label>
+            <label><input type="radio" name="type" value="J" checked> J型</label>
+            <label><input type="radio" name="type" value="T"> T型</label>
+            <label><input type="radio" name="type" value="E"> E型</label>
+            <label><input type="radio" name="type" value="K"> K型</label>
+        </div>
+        
+        <div class="section">
+            <h2>冷端补偿 (0~60°C)</h2>
+            <input type="number" id="coldTemp" value="0" min="0" max="60" step="0.1">
+        </div>
+        
+        <div class="section">
+            <h2>温度 (范围根据类型)</h2>
+            <input type="number" id="inputTemp" placeholder="输入温度计算电动势">
+            <button onclick="calculateEmf()">输入温度计算电动势</button>
+        </div>
+        
+        <div class="section">
+            <h2>电动势 (范围根据类型, mV)</h2>
+            <input type="number" id="inputEmf" placeholder="输入电动势计算温度" step="0.001">
+            <button onclick="calculateTemp()">输入电动势计算温度</button>
+        </div>
+        
+        <div id="result"></div>
+    </div>
+    
+    <script>
+        const materials = {
+            R: { positive: '铂铑 (13%)', negative: '铂', color: '#FF0000' },
+            S: { positive: '铂铑 (10%)', negative: '铂', color: '#FF0000' },
+            B: { positive: '铂铑 (30%)', negative: '铂铑 (6%)', color: '#A9A9A9' },
+            J: { positive: '铁', negative: '铜镍', color: '#FFFFFF' },
+            T: { positive: '铜', negative: '铜镍', color: '#0000FF' },
+            E: { positive: '镍铬', negative: '铜镍', color: '#800080' },
+            K: { positive: '镍铬', negative: '镍铝', color: '#FFFF00' }
+        };
+
+        const coefficients = {
+            J: {
+                direct: [
+                    { range: [-210, 0], coeffs: [0, 50.381768815, 0.3047583693, -0.0008568106572, 0.0000013228195295, -0.0000000017052958337, 0.0000000000020948090697, -0.0000000000000012538395336, 0.00000000000000000015631725697] },
+                    { range: [0, 760], coeffs: [0, 50.381768815, 0.3047583693, -0.0008568106572, 0.0000013228195295, -0.0000000017052958337, 0.0000000000020948090697, -0.0000000000000012538395336, 0.00000000000000000015631725697] }, // Similar to low range
+                    { range: [760, 1200], coeffs: [-3113.58187, 3.00543684, -0.0000099477323, 0.00000000017027663, -0.00000000000000143033468, 0.00000000000000000000473886084] }
+                ],
+                inverse: [
+                    { range: [-8.095, 0], coeffs: [0, 19.528268, -1.2286185, -1.0752178, -0.59086933, -0.17256713, -0.028131513, -0.002396337, -0.000083823321] },
+                    { range: [0, 42.919], coeffs: [0, 19.78425, -0.2001204, 0.01036969, -0.0002549687, 0.000003585153, -0.00000005344285, 0.000000000509989] },
+                    { range: [42.919, 69.553], coeffs: [295.556213, 0.206182434, -0.000001636805, 0.00000000000992715, -0.00000000000000003358] }
+                ],
+                tempRange: [-210, 1200],
+                emfRange: [-8.095, 69.553],
+                tolerances: {
+                    class1: (t) => t >= -40 && t <= 375 ? 1.5 : 0.004 * Math.abs(t),
+                    class2: (t) => t >= -40 && t <= 333 ? 2.5 : 0.0075 * Math.abs(t),
+                    class3: (t) => t >= -200 && t <= 40 ? 2.5 : 0.015 * Math.abs(t)
+                }
+            },
+            K: {
+                direct: [
+                    { range: [-270, 0], coeffs: [0, 39.450128025, 0.023622373598, -0.00032858906784, -0.0000049904828777, -0.000000067509059173, -0.00000000057410327428, -0.0000000000031088872894, -0.000000000000010451609365, -0.000000000000000019889266878, -0.00000000000000000016322697486] },
+                    { range: [0, 1372], coeffs: [-17.600413686, 38.921204975, 0.018558770032, -0.000099457592874, 0.00000031840945719, -0.00000000056072844889, 0.00000000000056075059059, -0.00000000000000032020720003, 0.000000000000000000097151147152, -0.0000000000000000000012104721275], exp: { a0: 118.5976, a1: -0.0001183432, t0: 126.9686 } }
+                ],
+                inverse: [
+                    { range: [-5.891, 0], coeffs: [0, 25.08355, -1.2762878, -1.0833638, -0.8977354, -0.37342377, -0.086632643, -0.0010450598, -0.0000051920577] },
+                    { range: [0, 20.644], coeffs: [0, 25.173462, -0.2001204, 0.01036969, -0.0002549687, 0.000003585153, -0.00000005344285, 0.000000000509989, -0.00000000000392128] },
+                    { range: [20.644, 54.886], coeffs: [-1313.805611, 48.302223, -1.646031, 0.054263369, -0.001439149, 0.0000002522023, -0.0000000275862, 0.000000001703021, -0.0000000000456463] }
+                ],
+                tempRange: [-270, 1372],
+                emfRange: [-6.458, 54.886],
+                tolerances: {
+                    class1: (t) => t >= -40 && t <= 375 ? 1.5 : 0.004 * Math.abs(t),
+                    class2: (t) => t >= -40 && t <= 333 ? 2.5 : 0.0075 * Math.abs(t),
+                    class3: (t) => t >= -200 && t <= 40 ? 2.5 : 0.015 * Math.abs(t)
+                }
+            },
+            E: {
+                direct: [
+                    { range: [-270, 0], coeffs: [0, 58.665508708, 0.045410977124, -0.00077998048686, -0.000025800160843, -0.00000059452583057, -0.0000000093214058667, -0.00000000010287605534, -0.000000000000080370123621, -0.0000000000000043979497391, -0.00000000000000016414776355, -0.0000000000000000039673619516, -0.000000000000000000055827328721, -0.0000000000000000000034657842013] },
+                    { range: [0, 1000], coeffs: [0, 58.662047564, 0.0450453513409, -0.00025936004895, 0.000000067562099, -0.00000000001055703248, 0.000000000000001052755224, -0.00000000000000000007272886979, 0.0000000000000000000000033600167, -0.0000000000000000000000000968599, 0.00000000000000000000000000000120957] }
+                ],
+                inverse: [
+                    { range: [-9.835, 0], coeffs: [0, 17.00153067, -0.3185380988, 0.00438793512, -0.000144048298, -0.000002920780, 0.000000360529, -0.00000002059526, 0.000000000486818, -0.00000000000482775] },
+                    { range: [0, 76.373], coeffs: [0, 17.00153067, -0.3185380988, 0.00438793512, -0.000144048298, -0.000002920780, 0.000000360529, -0.00000002059526, 0.000000000486818, -0.00000000000482775] }
+                ],
+                tempRange: [-270, 1000],
+                emfRange: [-9.835, 76.373],
+                tolerances: {
+                    class1: (t) => t >= -40 && t <= 375 ? 1.5 : 0.004 * Math.abs(t),
+                    class2: (t) => t >= -40 && t <= 333 ? 2.5 : 0.0075 * Math.abs(t),
+                    class3: (t) => t >= -200 && t <= 40 ? 2.5 : 0.015 * Math.abs(t)
+                }
+            },
+            T: {
+                direct: [
+                    { range: [-270, 0], coeffs: [0, 38.749194, 0.04181295, -0.000645097, -0.00000201192, 0.000000125993, -0.000000003899256, 0.000000000067463, -0.000000000000639248, 0.00000000000000003369, -0.000000000000000000965275] },
+                    { range: [0, 400], coeffs: [0, 38.749194, 0.04181295, -0.000645097, -0.00000201192, 0.000000125993, -0.000000003899256, 0.000000000067463, -0.000000000000639248, 0.00000000000000003369, -0.000000000000000000965275] }
+                ],
+                inverse: [
+                    { range: [-5.603, 0], coeffs: [0, 25.9078, 0.790106, -2.242713, 5.862046, -9.829252, 10.257031, -6.630913, 2.435179, -0.3916978] },
+                    { range: [0, 20.872], coeffs: [0, 25.9078, 0.790106, -2.242713, 5.862046, -9.829252, 10.257031, -6.630913, 2.435179, -0.3916978] }
+                ],
+                tempRange: [-270, 400],
+                emfRange: [-5.603, 20.872],
+                tolerances: {
+                    class1: (t) => t >= -40 && t <= 125 ? 0.5 : 0.004 * Math.abs(t),
+                    class2: (t) => t >= -40 && t <= 133 ? 1 : 0.0075 * Math.abs(t),
+                    class3: (t) => t >= -200 && t <= 40 ? 1 : 0.015 * Math.abs(t)
+                }
+            },
+            R: {
+                direct: [
+                    { range: [-50, 1064.18], coeffs: [0, 5.28961729765, 0.0139166589782, -0.0000238855693017, 0.0000000356916001063, -0.0000000000462347666298, 0.0000000000000500777441034, -0.0000000000000000373105886191, 0.0000000000000000000157716482367, -0.00000000000000000000000281038625251] },
+                    { range: [1064.18, 1664.5], coeffs: [2.95157925316, -2.52061251332, 0.0099477323, -0.00000017027663, 0.00000000000143033468, -0.00000000000000000473886084] },
+                    { range: [1664.5, 1768.1], coeffs: [ -148.9159, 1.1410196, -0.0029927827, 0.000004836488, -0.000000004001204, 0.0000000000017467099, -0.0000000000000003155417] }
+                ],
+                inverse: [
+                    { range: [-0.226, 1.923], coeffs: [0, 169.5018, -28.51447, 41.99487, -36.43096, 29.0544, -15.23834, 4.719416, -0.6182591] },
+                    { range: [1.923, 11.361], coeffs: [0, 185.30818, -8.0060413, 1.0997881, -0.037481159, -0.00025284711, 0.0000026038692, -0.000000048412854] },
+                    { range: [11.361, 19.739], coeffs: [-5179.288, 336.6824, -6.510153, 0.078280467, -0.00053849439, 0.0000018742864, -0.000000002082921] },
+                    { range: [19.739, 21.103], coeffs: [19007.802, -194.03567, 6.6078836, -0.075291522, 0.00000036304898, -0.00000000008754904] }
+                ],
+                tempRange: [-50, 1768],
+                emfRange: [-0.226, 21.103],
+                tolerances: {
+                    class1: (t) => t >= 0 && t <= 1100 ? 1 : 1 + 0.003 * (t - 1100),
+                    class2: (t) => t >= 0 && t <= 600 ? 1.5 : 0.0025 * t,
+                    class3: null
+                }
+            },
+            S: {
+                direct: [
+                    { range: [-50, 1064.18], coeffs: [0, 5.40313308631, 0.0132584308822, -0.0000225231596067, 0.0000000301081060809, -0.000000000037383768415, 0.000000000000033325047853, -0.000000000000000018994951336, 0.0000000000000000000060863245607, -0.000000000000000000000000846609935] },
+                    { range: [1064.18, 1664.5], coeffs: [1.540963, -1.501791, 0.00511955, -0.0000071632216, 0.000000005333875, -0.000000000002045598, 0.00000000000000000039539048] },
+                    { range: [1664.5, 1768.1], coeffs: [ -245.135, 0.8004208, -0.0006361282, 0.0000002630528, -0.00000000005801852, 0.000000000006713672, -0.00000000000000032562052] }
+                ],
+                inverse: [
+                    { range: [-0.235, 1.874], coeffs: [0, 171.0459, -38.51473, 69.55381, -88.1414, 87.75247, -57.93139, 23.31864, -5.141797, 0.4411532] },
+                    { range: [1.874, 11.95], coeffs: [0, 190.3727, -7.3562749, 0.9178369, -0.02948, -0.0003173293, 0.0000026596514, -0.00000005333395] },
+                    { range: [11.95, 18.503], coeffs: [-3369.445, 268.8141, -6.917401, 0.09195204, -0.000629261, 0.000002386049, -0.000000003821953] },
+                    { range: [18.503, 18.693], coeffs: [33629.83, -277.2435, 7.25646, -0.07818431, 0.0000003200975, -0.0000000000671204] }
+                ],
+                tempRange: [-50, 1768],
+                emfRange: [-0.235, 18.693],
+                tolerances: {
+                    class1: (t) => t >= 0 && t <= 1100 ? 1 : 1 + 0.003 * (t - 1100),
+                    class2: (t) => t >= 0 && t <= 600 ? 1.5 : 0.0025 * t,
+                    class3: null
+                }
+            },
+            B: {
+                direct: [
+                    { range: [0, 630.615], coeffs: [0, -0.24650818346, 0.0059040421171, -0.0000013257931636, 0.0000000015668291901, -0.000000000001694452924, 0.00000000000000062990347094] },
+                    { range: [630.615, 1820], coeffs: [-3893.8168621, 28.57174747, -0.084885104785, 0.00015785280164, -0.00000016835344864, 0.00000000011109794013, -0.000000000000044515431033, 0.0000000000000000098975640821, -0.00000000000000000000093791330289] }
+                ],
+                inverse: [
+                    { range: [0.291, 2.431], coeffs: [9.8423321, 0.6997150, -0.00084765304, 0.0010052644, -0.00000083345952, 0.00000045508542, -0.00000015523037, 0.00000002988675, -0.000000002474286] },
+                    { range: [2.431, 13.82], coeffs: [-213.15071, 0.28510504, -0.000052742887, 0.0000099160804, -0.0000000012965303, 0.0000000001119587, -0.0000000000060625199, 0.00000000000018661696, -0.0000000000000024878585] }
+                ],
+                tempRange: [0, 1820],
+                emfRange: [0, 13.82],
+                tolerances: {
+                    class1: null,
+                    class2: (t) => t >= 600 && t <= 1700 ? 0.0025 * t : null,
+                    class3: (t) => t >= 600 && t <= 800 ? 4 : 0.005 * t
+                }
+            }
+        };
+
+        function getType() {
+            return document.querySelector('input[name="type"]:checked').value;
+        }
+
+        function calculatePolynomial(coeffs, x, exp = null) {
+            let result = coeffs.reduce((acc, c, i) => acc + c * Math.pow(x, i), 0);
+            if (exp) {
+                result += exp.a0 * Math.exp(exp.a1 * Math.pow(x - exp.t0, 2));
+            }
+            return result;
+        }
+
+        function findRange(ranges, value) {
+            for (let r of ranges) {
+                if (value >= r.range[0] && value <= r.range[r.range.length - 1]) {
+                    return r;
+                }
+            }
+            return null;
+        }
+
+        function invertEmf(data, emfTotal, minT, maxT) {
+            // Binary search for temperature given emf
+            let low = minT;
+            let high = maxT;
+            for (let iter = 0; iter < 100; iter++) {
+                const mid = (low + high) / 2;
+                const range = findRange(data.direct, mid);
+                if (!range) return null;
+                const emfCalc = calculatePolynomial(range.coeffs, mid, range.exp);
+                if (emfCalc < emfTotal) {
+                    low = mid;
+                } else {
+                    high = mid;
+                }
+                if (Math.abs(high - low) < 0.001) break;
+            }
+            return (low + high) / 2;
+        }
+
+        function calculateEmf() {
+            const type = getType();
+            const data = coefficients[type];
+            const tHot = parseFloat(document.getElementById('inputTemp').value);
+            const tCold = parseFloat(document.getElementById('coldTemp').value);
+            if (isNaN(tHot) || isNaN(tCold) || tHot < data.tempRange[0] || tHot > data.tempRange[1] || tCold < 0 || tCold > 60) {
+                alert('输入值无效或超出范围');
+                return;
+            }
+
+            const rangeHot = findRange(data.direct, tHot);
+            const rangeCold = findRange(data.direct, tCold);
+            const emfHot = calculatePolynomial(rangeHot.coeffs, tHot, rangeHot.exp);
+            const emfCold = calculatePolynomial(rangeCold.coeffs, tCold, rangeCold.exp);
+            const emf = (emfHot - emfCold) / 1000; // μV to mV
+
+            const tol1 = data.tolerances.class1 ? data.tolerances.class1(tHot).toFixed(2) : 'N/A';
+            const tol2 = data.tolerances.class2 ? data.tolerances.class2(tHot).toFixed(2) : 'N/A';
+            const tol3 = data.tolerances.class3 ? data.tolerances.class3(tHot).toFixed(2) : 'N/A';
+
+            const mat = materials[type];
+
+            document.getElementById('result').innerHTML = `
+                <h3>计算结果:</h3>
+                <p>电偶类型: ${type}型</p>
+                <p class="material">正极: ${mat.positive} / 负极: ${mat.negative}</p>
+                <p>电动势: ${emf.toFixed(3)}mV</p>
+                <p>1级公差: ±${tol1}°C</p>
+                <p>2级公差: ±${tol2}°C</p>
+                <p>3级公差: ±${tol3}°C</p>
+                <p>温度: ${tHot}°C</p>
+                <p>1级公差: ±${tol1}°C</p>
+                <p>2级公差: ±${tol2}°C</p>
+                <p>3级公差: ±${tol3}°C</p>
+            `;
+        }
+
+        function calculateTemp() {
+            const type = getType();
+            const data = coefficients[type];
+            const emfMeasured = parseFloat(document.getElementById('inputEmf').value) * 1000; // mV to μV
+            const tCold = parseFloat(document.getElementById('coldTemp').value);
+            if (isNaN(emfMeasured) || isNaN(tCold) || emfMeasured < data.emfRange[0] * 1000 || emfMeasured > data.emfRange[1] * 1000 || tCold < 0 || tCold > 60) {
+                alert('输入值无效或超出范围');
+                return;
+            }
+
+            const rangeCold = findRange(data.direct, tCold);
+            const emfCold = calculatePolynomial(rangeCold.coeffs, tCold, rangeCold.exp);
+            const emfTotal = emfMeasured + emfCold;
+
+            let tHot;
+            if (data.inverse) {
+                const range = findRange(data.inverse, emfTotal / 1000); // if inverse in mV, adjust
+                if (range) {
+                    tHot = calculatePolynomial(range.coeffs, emfTotal / 1000);
+                } else {
+                    tHot = invertEmf(data, emfTotal, data.tempRange[0], data.tempRange[1]);
+                }
+            } else {
+                tHot = invertEmf(data, emfTotal, data.tempRange[0], data.tempRange[1]);
+            }
+
+            const tol1 = data.tolerances.class1 ? data.tolerances.class1(tHot).toFixed(2) : 'N/A';
+            const tol2 = data.tolerances.class2 ? data.tolerances.class2(tHot).toFixed(2) : 'N/A';
+            const tol3 = data.tolerances.class3 ? data.tolerances.class3(tHot).toFixed(2) : 'N/A';
+
+            const mat = materials[type];
+
+            document.getElementById('result').innerHTML = `
+                <h3>计算结果:</h3>
+                <p>电偶类型: ${type}型</p>
+                <p class="material">正极: ${mat.positive} / 负极: ${mat.negative}</p>
+                <p>电动势: ${(emfMeasured / 1000).toFixed(3)}mV</p>
+                <p>1级公差: ±${tol1}°C</p>
+                <p>2级公差: ±${tol2}°C</p>
+                <p>3级公差: ±${tol3}°C</p>
+                <p>温度: ${tHot.toFixed(2)}°C</p>
+                <p>1级公差: ±${tol1}°C</p>
+                <p>2级公差: ±${tol2}°C</p>
+                <p>3级公差: ±${tol3}°C</p>
+            `;
+        }
+    </script>
+</body>
+</html>
